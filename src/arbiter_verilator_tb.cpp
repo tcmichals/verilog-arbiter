@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         switch( cyc)
         {
             case which_cyc::CYC_1:
-                if ( tb->wbs_cyc_o == 0)
+                if ( tb->wbs_cyc_o == 1)
                 {
                     std::cout << "grant worked CYC 0" << std::endl;
                      cyc = which_cyc::CYC_2_PREP;
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
             case which_cyc::None:
 		 if(!tb->wb_rst)
                 {
-                    tb->wbm_cyc_i = 0;
+                    tb->wbm_cyc_i = 1;
                     time_invoke = main_time + CYCLE_TIME;
                     cyc = which_cyc::CYC_1;
                 }
