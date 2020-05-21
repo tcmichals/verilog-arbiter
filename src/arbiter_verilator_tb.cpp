@@ -7,7 +7,8 @@
 
 
 #define TIME_INC 10
-#define CYCLE_TIME (200)
+#define CYCLE_TIME (400)
+#define RESET_TIME (100)
 
 
 
@@ -24,6 +25,7 @@ enum class which_cyc
     CYC_1,
     CYC_2_PREP,
     CYC_2,
+    DONE,
 
 };
 
@@ -36,24 +38,24 @@ int main(int argc, char **argv)
 	std::unique_ptr<Varbiter_verilator_tb> tb = std::make_unique< Varbiter_verilator_tb>();
     std::unique_ptr<VerilatedVcdC> tfp=  std::make_unique<VerilatedVcdC>();
     Verilated::traceEverOn(true);
-    vluint64_t main_time = 0; 
 
-    vluint64_t time_invoke = 0;
+    uint32_t main_time = 0; 
+    uint32_t time_invoke = 0;
 
     which_cyc cyc(which_cyc::None);
 
     tb->trace (tfp.get(), 99);
 
     tfp->open("arbiter_verilator_tb.vcd");
-    tb->wb_rst = 0;
+    tb->wb_rst = 1;
     tb->wb_clk = 0;
     tb->wbm_cyc_i = 0;
 	// Tick the clock until we are done
 	while(!Verilated::gotFinish() && !done) 
     {
 		tb->eval();
-       // if (tfp)
-		//    tfp->dump(main_time);
+       		 if (tfp)
+		    tfp->dump(main_time);
 
 
         switch( cyc)
@@ -64,7 +66,7 @@ int main(int argc, char **argv)
                     std::cout << "grant worked CYC 0" << std::endl;
                      cyc = which_cyc::CYC_2_PREP;
                      tb->wbm_cyc_i = 0;
-                     time_invoke = main_time + TIME_INC;
+                     time_invoke = main_time + CYCLE_TIME;
                 }
                 else if ( time_invoke < main_time )
                 {
@@ -77,10 +79,10 @@ int main(int argc, char **argv)
 
                 if ( time_invoke < main_time )
                 {
-                    tb->wbm_cyc_i = 1;
-                    time_invoke = main_time + TIME_INC;
+                    tb->wbm_cyc_i = 2;
+                    time_invoke = main_time + CYCLE_TIME ;
                     cyc = which_cyc::CYC_2;
-                    std::cerr << "Second test" << std::endl;
+                    std::cout << "Second test" << std::endl;
                 }
             break;
 
@@ -88,8 +90,8 @@ int main(int argc, char **argv)
                 if ( tb->wbs_cyc_o == 1)
                 {
                     std::cout << "grant worked CYC 1" << std::endl;
-                    done = true;
-
+                    cyc = which_cyc::DONE;
+		     time_invoke = main_time + CYCLE_TIME;
                 }
                 else if ( time_invoke < main_time )
                 {
@@ -101,17 +103,26 @@ int main(int argc, char **argv)
             break;
 
             case which_cyc::None:
-                if ( (main_time - time_invoke) == CYCLE_TIME)
+		 if(!tb->wb_rst)
                 {
                     tb->wbm_cyc_i = 0;
-                    time_invoke = main_time + TIME_INC;
+                    time_invoke = main_time + CYCLE_TIME;
                     cyc = which_cyc::CYC_1;
                 }
-            break;;
+            break;
+
+            case which_cyc::DONE:
+                 if ( time_invoke < main_time )
+                {
+                    done = true;
+                }
+
+            break;
+
         }
 
-        tb->wb_rst = main_time < 100;
-		tb->wb_clk = !tb->wb_clk;
+        tb->wb_rst = main_time < RESET_TIME;
+	tb->wb_clk = !tb->wb_clk;
         main_time += TIME_INC;
 		
 	} 
